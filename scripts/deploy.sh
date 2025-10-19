@@ -40,14 +40,38 @@ CHART_PATH=${CHART_PATH:-charts/ci-runner}
 RELEASE_NAME=${RELEASE_NAME:-ci-runner}
 NAMESPACE=${NAMESPACE:-default}
 
+detect_container_runtime() {
+  if [[ -n "${CONTAINER_RUNTIME-}" ]]; then
+    if command -v "${CONTAINER_RUNTIME}" >/dev/null 2>&1; then
+      echo "${CONTAINER_RUNTIME}"
+      return 0
+    else
+      echo "Error: specified CONTAINER_RUNTIME '${CONTAINER_RUNTIME}' not found in PATH." >&2
+      return 1
+    fi
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    echo docker
+  elif command -v podman >/dev/null 2>&1; then
+    echo podman
+  else
+    echo "Error: neither docker nor podman found in PATH. Set CONTAINER_RUNTIME if installed elsewhere." >&2
+    return 1
+  fi
+}
+
+CONTAINER_RUNTIME=$(detect_container_runtime)
+echo "Using container runtime: ${CONTAINER_RUNTIME}" 
+
 IMAGE_REPO="${REGISTRY%/}/${IMAGE_NAME}"
 FULL_IMAGE="${IMAGE_REPO}:${IMAGE_TAG}"
 
-echo "Building Docker image ${FULL_IMAGE}..."
-docker build -t "${FULL_IMAGE}" .
+echo "Building image ${FULL_IMAGE}..."
+"${CONTAINER_RUNTIME}" build -t "${FULL_IMAGE}" .
 
-echo "Pushing Docker image ${FULL_IMAGE}..."
-docker push "${FULL_IMAGE}"
+echo "Pushing image ${FULL_IMAGE}..."
+"${CONTAINER_RUNTIME}" push "${FULL_IMAGE}"
 
 echo "Deploying Helm release ${RELEASE_NAME} in namespace ${NAMESPACE}..."
 helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
