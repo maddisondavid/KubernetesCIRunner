@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ci-runner.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+  {{- with .Values.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: runner
+      {{- with .Values.podLabels }}
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "ci-runner.serviceAccountName" . }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: runner
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: REPO
+              value: {{ required "runner.repo is required" .Values.runner.repo | quote }}
+            - name: BRANCH
+              value: {{ .Values.runner.branch | quote }}
+            - name: IMAGE
+              value: {{ required "runner.image is required" .Values.runner.image | quote }}
+            - name: CHART_PATH
+              value: {{ required "runner.chartPath is required" .Values.runner.chartPath | quote }}
+            - name: RELEASE
+              value: {{ required "runner.release is required" .Values.runner.release | quote }}
+            - name: CICD_NS
+              value: {{ .Values.runner.cicdNamespace | quote }}
+            - name: DEPLOY_NS
+              value: {{ .Values.runner.deployNamespace | quote }}
+            - name: INTERVAL
+              value: {{ .Values.runner.interval | quote }}
+            - name: MAX_RETRIES
+              value: {{ .Values.runner.maxRetries | quote }}
+            - name: STATE_PATH
+              value: {{ .Values.runner.statePath | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logging.level | quote }}
+          {{- if .Values.runner.registrySecret }}
+            - name: REGISTRY_SECRET
+              value: {{ .Values.runner.registrySecret | quote }}
+          {{- end }}
+          {{- if .Values.runner.gitTokenSecretName }}
+            - name: GIT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.runner.gitTokenSecretName }}
+                  key: token
+          {{- end }}
+          {{- if .Values.extraEnv }}
+{{ toYaml .Values.extraEnv | indent 12 }}
+          {{- end }}
+          {{- if .Values.extraEnvFrom }}
+          envFrom:
+{{ toYaml .Values.extraEnvFrom | indent 12 }}
+          {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: runner-data
+              mountPath: /data
+          {{- with .Values.volumeMounts.extra }}
+{{ toYaml . | indent 12 }}
+          {{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: runner-data
+          {{- if .Values.volumes.data.persistentVolumeClaim.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.volumes.data.persistentVolumeClaim.existingClaim }}{{ .Values.volumes.data.persistentVolumeClaim.existingClaim }}{{ else }}{{ include "ci-runner.fullname" . }}-data{{ end }}
+          {{- else }}
+          {{- if .Values.volumes.data.emptyDir }}
+          emptyDir:
+{{ toYaml .Values.volumes.data.emptyDir | indent 12 }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+          {{- end }}
+      {{- with .Values.volumes.extra }}
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+      {{- end }}

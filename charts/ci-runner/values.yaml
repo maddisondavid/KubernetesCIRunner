@@ -1,0 +1,74 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/example/kubernetes-ci-runner
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+  cicdNamespace: cicd
+  deployNamespace: default
+  extraRules: []
+
+podAnnotations: {}
+podLabels: {}
+annotations: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+priorityClassName: ""
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+logging:
+  level: "info"
+
+runner:
+  repo: ""
+  branch: main
+  image: ""
+  chartPath: ""
+  release: ""
+  cicdNamespace: cicd
+  deployNamespace: default
+  interval: 300
+  maxRetries: 3
+  gitTokenSecretName: ""
+  registrySecret: ""
+  statePath: /data/runner-state.json
+
+extraEnv: []
+extraEnvFrom: []
+
+volumes:
+  data:
+    persistentVolumeClaim:
+      enabled: false
+      existingClaim: ""
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+      size: 1Gi
+    emptyDir: {}
+  extra: []
+
+volumeMounts:
+  extra: []
+

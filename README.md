@@ -98,6 +98,26 @@ spec:
           emptyDir: {}
 ```
 
+### Helm Chart
+
+A production-ready Helm chart is available under [`charts/ci-runner`](charts/ci-runner). Set the required `runner` values (`repo`,
+`image`, `chartPath`, and `release`) before installing:
+
+```bash
+helm install build-deploy-runner charts/ci-runner \
+  --namespace cicd --create-namespace \
+  --set runner.repo="example/my-app" \
+  --set runner.image="ghcr.io/example/my-app" \
+  --set runner.chartPath="charts/my-app" \
+  --set runner.release="my-app"
+```
+
+Adjust `runner.cicdNamespace` and `runner.deployNamespace` if your build or deployment targets use non-default namespaces. The
+chart provisions a `ServiceAccount` and namespace-scoped RBAC roles that grant the runner permission to launch Kaniko Jobs in
+the CI namespace and perform Helm upgrades in the deployment namespace. Configure `runner.gitTokenSecretName` to reference a
+secret containing a `token` key when authenticating to private Git repositories, and enable the optional PersistentVolumeClaim
+if you need the runner state to persist across pod restarts.
+
 ## Development
 
 The project code lives under `src/ci_runner`. The main entrypoint is `ci_runner/runner.py`, which coordinates configuration loading, GitHub polling, Kaniko job creation, Helm upgrades, and state persistence.

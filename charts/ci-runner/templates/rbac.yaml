@@ -1,0 +1,83 @@
+{{- if .Values.rbac.create }}
+{{- $serviceAccount := include "ci-runner.serviceAccountName" . -}}
+{{- $releaseNamespace := .Release.Namespace -}}
+{{- $cicdNamespace := default .Values.runner.cicdNamespace .Values.rbac.cicdNamespace -}}
+{{- $deployNamespace := default .Values.runner.deployNamespace .Values.rbac.deployNamespace -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ci-runner.fullname" . }}-cicd
+  namespace: {{ $cicdNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ci-runner.fullname" . }}-cicd
+  namespace: {{ $cicdNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccount }}
+    namespace: {{ $releaseNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ci-runner.fullname" . }}-cicd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ci-runner.fullname" . }}-deploy
+  namespace: {{ $deployNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+rules:
+  - apiGroups: ["", "apps", "batch", "autoscaling", "extensions", "networking.k8s.io", "policy", "rbac.authorization.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  {{- with .Values.rbac.extraRules }}
+  {{ toYaml . | indent 2 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ci-runner.fullname" . }}-deploy
+  namespace: {{ $deployNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccount }}
+    namespace: {{ $releaseNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ci-runner.fullname" . }}-deploy
+{{- end }}
