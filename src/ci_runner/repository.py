@@ -5,7 +5,7 @@ import logging
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import requests
 import urllib3
@@ -18,15 +18,20 @@ class RepositoryError(RuntimeError):
 
 
 def download_and_extract(
-    archive_url: str, *, verify_ssl: bool = True
+    archive_url: str,
+    *,
+    verify_ssl: bool = True,
+    ca_bundle_path: Optional[str] = None,
 ) -> Tuple[Path, tempfile.TemporaryDirectory]:
     """Download a tarball from ``archive_url`` and extract it to a temp directory."""
 
-    if not verify_ssl:
+    verify_option = ca_bundle_path if verify_ssl and ca_bundle_path else verify_ssl
+
+    if verify_option is False:
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     response = requests.get(
-        archive_url, stream=True, timeout=60, verify=verify_ssl
+        archive_url, stream=True, timeout=60, verify=verify_option
     )
     if response.status_code != 200:
         raise RepositoryError(

@@ -14,7 +14,7 @@ from kubernetes.client.exceptions import ApiException
 _LOGGER = logging.getLogger(__name__)
 
 
-def load_kube_config(*, verify_ssl: bool = True) -> None:
+def load_kube_config(*, verify_ssl: bool = True, ca_bundle_path: Optional[str] = None) -> None:
     """Load in-cluster config; fall back to local kubeconfig."""
 
     try:
@@ -25,7 +25,7 @@ def load_kube_config(*, verify_ssl: bool = True) -> None:
         _LOGGER.info("Loaded local kubeconfig configuration")
 
     if verify_ssl:
-        _ensure_incluster_ca()
+        _ensure_incluster_ca(ca_bundle_path=ca_bundle_path)
     else:
         _disable_tls_verification()
 
@@ -42,10 +42,23 @@ def _disable_tls_verification() -> None:
     _LOGGER.warning("TLS verification is disabled for the Kubernetes client")
 
 
-def _ensure_incluster_ca() -> None:
+def _ensure_incluster_ca(*, ca_bundle_path: Optional[str] = None) -> None:
     """Ensure the Kubernetes client has a usable CA certificate path."""
 
     cfg = client.Configuration.get_default_copy()
+    if ca_bundle_path:
+        if os.path.exists(ca_bundle_path):
+            cfg.ssl_ca_cert = ca_bundle_path
+            client.Configuration.set_default(cfg)
+            _LOGGER.info(
+                "Using custom CA bundle for the Kubernetes client: %s", ca_bundle_path
+            )
+            _log_ca_details(ca_bundle_path)
+            return
+        _LOGGER.warning(
+            "Configured CA bundle path %s is not accessible; falling back to defaults",
+            ca_bundle_path,
+        )
     ca_path = cfg.ssl_ca_cert
     if ca_path and os.path.exists(ca_path):
         _log_ca_details(ca_path)

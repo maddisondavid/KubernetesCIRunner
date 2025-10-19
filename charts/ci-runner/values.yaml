@@ -73,3 +73,11 @@ volumes:
 volumeMounts:
   extra: []
 
+certificates:
+  caBundle:
+    enabled: false
+    configMapName: ""
+    configMapKey: ""
+    mountPath: /etc/ci-runner/certs
+    fileName: ca-bundle.crt
+
