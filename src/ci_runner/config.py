@@ -25,6 +25,7 @@ class RunnerSettings:
     state_path: str
     max_retries: int
     verify_ssl: bool
+    ca_bundle_path: Optional[str]
 
 
 def _require(name: str) -> str:
@@ -77,4 +78,5 @@ def load_settings() -> RunnerSettings:
         state_path=os.getenv("STATE_PATH", "/data/runner-state.json"),
         max_retries=max_retries,
         verify_ssl=_get_bool("VERIFY_SSL", default=True),
+        ca_bundle_path=os.getenv("CA_BUNDLE_PATH") or None,
     )

@@ -20,11 +20,21 @@ class GitHubClient:
     """A very small wrapper around the GitHub REST API."""
 
     def __init__(
-        self, repo: str, token: Optional[str] = None, *, verify_ssl: bool = True
+        self,
+        repo: str,
+        token: Optional[str] = None,
+        *,
+        verify_ssl: bool = True,
+        ca_bundle_path: Optional[str] = None,
     ) -> None:
         self._repo = repo
         self._token = token
         self._verify_ssl = verify_ssl
+        if verify_ssl and ca_bundle_path:
+            self._verify = ca_bundle_path
+            _LOGGER.info("Using custom CA bundle for GitHub requests: %s", ca_bundle_path)
+        else:
+            self._verify = verify_ssl
         if not verify_ssl:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
             _LOGGER.warning("SSL verification is disabled for GitHub HTTP requests")
@@ -40,7 +50,7 @@ class GitHubClient:
 
         url = f"{_API_BASE}/repos/{self._repo}/commits/{branch}"
         response = requests.get(
-            url, headers=self._headers(), timeout=30, verify=self._verify_ssl
+            url, headers=self._headers(), timeout=30, verify=self._verify
         )
         if response.status_code != 200:
             raise GitHubError(
