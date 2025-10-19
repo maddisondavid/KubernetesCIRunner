@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/deploy.sh <storage-class-name>
+Usage: scripts/deploy.sh <storage-class-name> <repository>
 
 Builds the project Docker image, pushes it to the configured Docker registry,
 and deploys the Helm chart with the specified storage class for the runner's
@@ -16,6 +16,7 @@ Environment variables:
   CHART_PATH      Path to the Helm chart (default: charts/ci-runner)
   RELEASE_NAME    Helm release name (default: ci-runner)
   NAMESPACE       Kubernetes namespace for the release (default: default)
+  RUNNER_BRANCH   Git branch the runner should track (default: main)
 USAGE
 }
 
@@ -33,12 +34,22 @@ fi
 
 STORAGE_CLASS=$1
 
+if [[ $# -lt 2 ]]; then
+  echo "Error: repository (org/repo) is required." >&2
+  echo >&2
+  usage >&2
+  exit 1
+fi
+
+REPOSITORY=$2
+
 REGISTRY=${REGISTRY:-localhost:5000}
 IMAGE_NAME=${IMAGE_NAME:-kubernetes-ci-runner}
 IMAGE_TAG=${IMAGE_TAG:-$(git rev-parse --short HEAD)}
 CHART_PATH=${CHART_PATH:-charts/ci-runner}
 RELEASE_NAME=${RELEASE_NAME:-ci-runner}
 NAMESPACE=${NAMESPACE:-default}
+RUNNER_BRANCH=${RUNNER_BRANCH:-main}
 
 detect_container_runtime() {
   if [[ -n "${CONTAINER_RUNTIME-}" ]]; then
@@ -79,6 +90,8 @@ helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
   --create-namespace \
   --set image.repository="${IMAGE_REPO}" \
   --set image.tag="${IMAGE_TAG}" \
+  --set runner.repo="${REPOSITORY}" \
+  --set runner.branch="${RUNNER_BRANCH}" \
   --set volumes.data.persistentVolumeClaim.enabled=true \
   --set volumes.data.persistentVolumeClaim.storageClass="${STORAGE_CLASS}"
 
@@ -88,5 +101,7 @@ Deployment complete!
 - Release: ${RELEASE_NAME}
 - Namespace: ${NAMESPACE}
 - Image: ${FULL_IMAGE}
+- Repository: ${REPOSITORY}
+- Branch: ${RUNNER_BRANCH}
 - StorageClass: ${STORAGE_CLASS}
 DEPLOYED
