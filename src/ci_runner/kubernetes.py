@@ -31,6 +31,7 @@ def _ensure_incluster_ca() -> None:
     cfg = client.Configuration.get_default_copy()
     ca_path = cfg.ssl_ca_cert
     if ca_path and os.path.exists(ca_path):
+        _log_ca_details(ca_path)
         return
 
     fallback_paths = [
@@ -43,6 +44,7 @@ def _ensure_incluster_ca() -> None:
             cfg.ssl_ca_cert = path
             client.Configuration.set_default(cfg)
             _LOGGER.info("Using Kubernetes CA certificate from %s", path)
+            _log_ca_details(path)
             return
 
     if ca_path:
@@ -54,6 +56,20 @@ def _ensure_incluster_ca() -> None:
         _LOGGER.warning(
             "Kubernetes CA certificate path is unset; checked %s", ", ".join(fallback_paths)
         )
+
+
+def _log_ca_details(path: str) -> None:
+    """Log the CA certificate path and contents for troubleshooting."""
+
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as file:
+            contents = file.read()
+    except OSError as exc:
+        _LOGGER.error("Unable to read Kubernetes CA certificate at %s: %s", path, exc)
+        return
+
+    _LOGGER.info("Kubernetes CA certificate path: %s", path)
+    _LOGGER.info("Kubernetes CA certificate contents:\n%s", contents)
 
 
 def ensure_namespace(api: client.CoreV1Api, name: str) -> None:
