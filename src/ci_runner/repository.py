@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Tuple
 
 import requests
+import urllib3
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,10 +17,17 @@ class RepositoryError(RuntimeError):
     """Raised when the repository cannot be downloaded or unpacked."""
 
 
-def download_and_extract(archive_url: str) -> Tuple[Path, tempfile.TemporaryDirectory]:
+def download_and_extract(
+    archive_url: str, *, verify_ssl: bool = True
+) -> Tuple[Path, tempfile.TemporaryDirectory]:
     """Download a tarball from ``archive_url`` and extract it to a temp directory."""
 
-    response = requests.get(archive_url, stream=True, timeout=60)
+    if not verify_ssl:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    response = requests.get(
+        archive_url, stream=True, timeout=60, verify=verify_ssl
+    )
     if response.status_code != 200:
         raise RepositoryError(
             f"Failed to download repository archive: {response.status_code}"

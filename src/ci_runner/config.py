@@ -24,6 +24,7 @@ class RunnerSettings:
     registry_secret: Optional[str]
     state_path: str
     max_retries: int
+    verify_ssl: bool
 
 
 def _require(name: str) -> str:
@@ -31,6 +32,20 @@ def _require(name: str) -> str:
     if not value:
         raise ConfigurationError(f"Missing required environment variable: {name}")
     return value
+
+
+def _get_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    value_lower = value.strip().lower()
+    if value_lower in {"1", "true", "yes", "on"}:
+        return True
+    if value_lower in {"0", "false", "no", "off"}:
+        return False
+
+    raise ConfigurationError(f"{name} must be a boolean value (true/false)")
 
 
 def load_settings() -> RunnerSettings:
@@ -61,4 +76,5 @@ def load_settings() -> RunnerSettings:
         registry_secret=os.getenv("REGISTRY_SECRET"),
         state_path=os.getenv("STATE_PATH", "/data/runner-state.json"),
         max_retries=max_retries,
+        verify_ssl=_get_bool("VERIFY_SSL", default=True),
     )

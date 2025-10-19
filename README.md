@@ -30,6 +30,7 @@ The runner is configured entirely through environment variables:
 | `GIT_TOKEN` | Personal access token for private repositories. | ❌ | — |
 | `REGISTRY_SECRET` | Name of dockerconfigjson secret for registry auth. | ❌ | — |
 | `STATE_PATH` | File path for runner state persistence. | ❌ | `/data/runner-state.json` |
+| `VERIFY_SSL` | Require TLS certificate verification for Kubernetes and GitHub connections (`false` disables verification). | ❌ | `true` |
 
 ## Running Locally
 

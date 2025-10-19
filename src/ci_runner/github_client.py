@@ -5,6 +5,7 @@ import logging
 from typing import Optional
 
 import requests
+import urllib3
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,9 +19,15 @@ class GitHubError(RuntimeError):
 class GitHubClient:
     """A very small wrapper around the GitHub REST API."""
 
-    def __init__(self, repo: str, token: Optional[str] = None) -> None:
+    def __init__(
+        self, repo: str, token: Optional[str] = None, *, verify_ssl: bool = True
+    ) -> None:
         self._repo = repo
         self._token = token
+        self._verify_ssl = verify_ssl
+        if not verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            _LOGGER.warning("SSL verification is disabled for GitHub HTTP requests")
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/vnd.github+json"}
@@ -32,7 +39,9 @@ class GitHubClient:
         """Return the SHA of the latest commit on ``branch``."""
 
         url = f"{_API_BASE}/repos/{self._repo}/commits/{branch}"
-        response = requests.get(url, headers=self._headers(), timeout=30)
+        response = requests.get(
+            url, headers=self._headers(), timeout=30, verify=self._verify_ssl
+        )
         if response.status_code != 200:
             raise GitHubError(
                 f"Failed to fetch commit for {self._repo}@{branch}: {response.status_code}"
