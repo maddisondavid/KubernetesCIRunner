@@ -3,8 +3,11 @@ set -euo pipefail
 
 env_tick() {
   local var_name=$1
+  local required=${2-}
   if [[ -v $var_name ]] && [[ -n "${!var_name}" ]]; then
     printf '✓'
+  elif [[ $required == required ]]; then
+    printf 'X'
   else
     printf ' '
   fi
@@ -13,7 +16,8 @@ env_tick() {
 env_line() {
   local var_name=$1
   local description=$2
-  printf '  [%s] %-16s %s\n' "$(env_tick "$var_name")" "$var_name" "$description"
+  local required=${3-}
+  printf '  [%s] %-16s %s\n' "$(env_tick "$var_name" "$required")" "$var_name" "$description"
 }
 
 usage() {
@@ -32,9 +36,9 @@ $(env_line CHART_PATH "Path to the Helm chart (default: charts/ci-runner)")
 $(env_line RELEASE_NAME "Helm release name (default: ci-runner)")
 $(env_line NAMESPACE "Kubernetes namespace for the release (default: default)")
 $(env_line RUNNER_BRANCH "Git branch the runner should track (default: main)")
-$(env_line APP_IMAGE "Target application image repository (required)")
-$(env_line APP_CHART_PATH "Path to the target Helm chart within the repository (required)")
-$(env_line APP_RELEASE "Helm release name for the target application (required)")
+$(env_line APP_IMAGE "Target application image repository (required)" required)
+$(env_line APP_CHART_PATH "Path to the target Helm chart within the repository (required)" required)
+$(env_line APP_RELEASE "Helm release name for the target application (required)" required)
 USAGE
 }
 
