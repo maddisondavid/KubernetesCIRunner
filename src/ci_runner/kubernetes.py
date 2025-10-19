@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from typing import Optional
 
@@ -18,9 +19,41 @@ def load_kube_config() -> None:
     try:
         config.load_incluster_config()
         _LOGGER.info("Loaded in-cluster Kubernetes configuration")
+        _ensure_incluster_ca()
     except config.ConfigException:
         config.load_kube_config()
         _LOGGER.info("Loaded local kubeconfig configuration")
+
+
+def _ensure_incluster_ca() -> None:
+    """Ensure the Kubernetes client has a usable CA certificate path."""
+
+    cfg = client.Configuration.get_default_copy()
+    ca_path = cfg.ssl_ca_cert
+    if ca_path and os.path.exists(ca_path):
+        return
+
+    fallback_paths = [
+        "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt",
+        "/var/run/secrets/kerbernetes.io/serviceaccount/ca.crt",
+    ]
+
+    for path in fallback_paths:
+        if os.path.exists(path):
+            cfg.ssl_ca_cert = path
+            client.Configuration.set_default(cfg)
+            _LOGGER.info("Using Kubernetes CA certificate from %s", path)
+            return
+
+    if ca_path:
+        _LOGGER.warning(
+            "Kubernetes CA certificate at %s is not accessible; TLS verification may fail",
+            ca_path,
+        )
+    else:
+        _LOGGER.warning(
+            "Kubernetes CA certificate path is unset; checked %s", ", ".join(fallback_paths)
+        )
 
 
 def ensure_namespace(api: client.CoreV1Api, name: str) -> None:
@@ -28,11 +61,29 @@ def ensure_namespace(api: client.CoreV1Api, name: str) -> None:
         api.read_namespace(name)
         return
     except ApiException as exc:
+        if exc.status == 403:
+            _LOGGER.info(
+                "Insufficient RBAC privileges to verify namespace %s; assuming it exists",
+                name,
+            )
+            return
         if exc.status != 404:
             raise
     ns = client.V1Namespace(metadata=client.V1ObjectMeta(name=name))
-    api.create_namespace(ns)
-    _LOGGER.info("Namespace %s created", name)
+    try:
+        api.create_namespace(ns)
+        _LOGGER.info("Namespace %s created", name)
+    except ApiException as exc:
+        if exc.status == 409:
+            _LOGGER.info("Namespace %s already exists", name)
+            return
+        if exc.status == 403:
+            _LOGGER.warning(
+                "Insufficient RBAC privileges to create namespace %s; continuing without creating",
+                name,
+            )
+            return
+        raise
 
 
 def create_kaniko_job(
