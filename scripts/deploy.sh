@@ -17,6 +17,9 @@ Environment variables:
   RELEASE_NAME    Helm release name (default: ci-runner)
   NAMESPACE       Kubernetes namespace for the release (default: default)
   RUNNER_BRANCH   Git branch the runner should track (default: main)
+  APP_IMAGE       Target application image repository (required)
+  APP_CHART_PATH  Path to the target Helm chart within the repository (required)
+  APP_RELEASE     Helm release name for the target application (required)
 USAGE
 }
 
@@ -50,6 +53,24 @@ CHART_PATH=${CHART_PATH:-charts/ci-runner}
 RELEASE_NAME=${RELEASE_NAME:-ci-runner}
 NAMESPACE=${NAMESPACE:-default}
 RUNNER_BRANCH=${RUNNER_BRANCH:-main}
+APP_IMAGE=${APP_IMAGE-}
+APP_CHART_PATH=${APP_CHART_PATH-}
+APP_RELEASE=${APP_RELEASE-}
+
+if [[ -z "${APP_IMAGE}" ]]; then
+  echo "Error: APP_IMAGE environment variable is required." >&2
+  exit 1
+fi
+
+if [[ -z "${APP_CHART_PATH}" ]]; then
+  echo "Error: APP_CHART_PATH environment variable is required." >&2
+  exit 1
+fi
+
+if [[ -z "${APP_RELEASE}" ]]; then
+  echo "Error: APP_RELEASE environment variable is required." >&2
+  exit 1
+fi
 
 detect_container_runtime() {
   if [[ -n "${CONTAINER_RUNTIME-}" ]]; then
@@ -92,6 +113,9 @@ helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
   --set image.tag="${IMAGE_TAG}" \
   --set runner.repo="${REPOSITORY}" \
   --set runner.branch="${RUNNER_BRANCH}" \
+  --set runner.image="${APP_IMAGE}" \
+  --set runner.chartPath="${APP_CHART_PATH}" \
+  --set runner.release="${APP_RELEASE}" \
   --set volumes.data.persistentVolumeClaim.enabled=true \
   --set volumes.data.persistentVolumeClaim.storageClass="${STORAGE_CLASS}"
 
