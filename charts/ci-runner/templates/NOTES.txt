@@ -1,0 +1,7 @@
+Thank you for installing {{ include "ci-runner.fullname" . }}.
+
+1. Ensure the runner pod has access to a GitHub token when deploying private repositories.
+2. Verify the `runner.cicdNamespace` and `runner.deployNamespace` values match your build and deployment targets.
+3. Inspect the runner logs to watch build and deployment activity:
+
+   kubectl logs deploy/{{ include "ci-runner.fullname" . }} -n {{ .Release.Namespace }}

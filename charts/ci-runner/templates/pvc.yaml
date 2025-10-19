@@ -1,0 +1,21 @@
+{{- if and .Values.volumes.data.persistentVolumeClaim.enabled (not .Values.volumes.data.persistentVolumeClaim.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ci-runner.fullname" . }}-data
+  labels:
+    app.kubernetes.io/name: {{ include "ci-runner.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: runner
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ include "ci-runner.chart" . }}
+spec:
+  accessModes:
+{{ toYaml .Values.volumes.data.persistentVolumeClaim.accessModes | indent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.volumes.data.persistentVolumeClaim.size }}
+  {{- if .Values.volumes.data.persistentVolumeClaim.storageClass }}
+  storageClassName: {{ .Values.volumes.data.persistentVolumeClaim.storageClass }}
+  {{- end }}
+{{- end }}
