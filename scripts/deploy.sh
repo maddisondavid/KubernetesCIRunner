@@ -36,7 +36,7 @@ $(env_line CHART_PATH "Path to the Helm chart (default: charts/ci-runner)")
 $(env_line RELEASE_NAME "Helm release name (default: ci-runner)")
 $(env_line NAMESPACE "Kubernetes namespace for the release (default: default)")
 $(env_line RUNNER_BRANCH "Git branch the runner should track (default: main)")
-$(env_line APP_IMAGE "Target application image repository (required)" required)
+$(env_line APP_IMAGE "Target application image name without registry (required)" required)
 $(env_line APP_CHART_PATH "Path to the target Helm chart within the repository (required)" required)
 $(env_line APP_RELEASE "Helm release name for the target application (required)" required)
 USAGE
@@ -117,6 +117,7 @@ echo "Using container runtime: ${CONTAINER_RUNTIME}"
 
 IMAGE_REPO="${REGISTRY%/}/${IMAGE_NAME}"
 FULL_IMAGE="${IMAGE_REPO}:${IMAGE_TAG}"
+APP_IMAGE_REPO="${REGISTRY%/}/${APP_IMAGE}"
 
 echo "Building image ${FULL_IMAGE}..."
 "${CONTAINER_RUNTIME}" build -t "${FULL_IMAGE}" .
@@ -132,7 +133,7 @@ helm upgrade --install "${RELEASE_NAME}" "${CHART_PATH}" \
   --set image.tag="${IMAGE_TAG}" \
   --set runner.repo="${REPOSITORY}" \
   --set runner.branch="${RUNNER_BRANCH}" \
-  --set runner.image="${APP_IMAGE}" \
+  --set runner.image="${APP_IMAGE_REPO}" \
   --set runner.chartPath="${APP_CHART_PATH}" \
   --set runner.release="${APP_RELEASE}" \
   --set volumes.data.persistentVolumeClaim.enabled=true \
@@ -144,6 +145,7 @@ Deployment complete!
 - Release: ${RELEASE_NAME}
 - Namespace: ${NAMESPACE}
 - Image: ${FULL_IMAGE}
+- Application Image: ${APP_IMAGE_REPO}
 - Repository: ${REPOSITORY}
 - Branch: ${RUNNER_BRANCH}
 - StorageClass: ${STORAGE_CLASS}
