@@ -6,6 +6,7 @@ import os
 import time
 from typing import Optional
 
+import urllib3
 from kubernetes import client, config
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client.exceptions import ApiException
@@ -13,16 +14,32 @@ from kubernetes.client.exceptions import ApiException
 _LOGGER = logging.getLogger(__name__)
 
 
-def load_kube_config() -> None:
+def load_kube_config(*, verify_ssl: bool = True) -> None:
     """Load in-cluster config; fall back to local kubeconfig."""
 
     try:
         config.load_incluster_config()
         _LOGGER.info("Loaded in-cluster Kubernetes configuration")
-        _ensure_incluster_ca()
     except config.ConfigException:
         config.load_kube_config()
         _LOGGER.info("Loaded local kubeconfig configuration")
+
+    if verify_ssl:
+        _ensure_incluster_ca()
+    else:
+        _disable_tls_verification()
+
+
+def _disable_tls_verification() -> None:
+    """Disable TLS verification for the Kubernetes client."""
+
+    cfg = client.Configuration.get_default_copy()
+    if cfg.verify_ssl:
+        cfg.verify_ssl = False
+        cfg.ssl_ca_cert = None
+        client.Configuration.set_default(cfg)
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    _LOGGER.warning("TLS verification is disabled for the Kubernetes client")
 
 
 def _ensure_incluster_ca() -> None:
@@ -129,6 +146,8 @@ def create_kaniko_job(
                 client.V1EnvVar(name="GIT_HTTPS_PASSWORD", value=settings.git_token),
             ]
         )
+    if not settings.verify_ssl:
+        env.append(client.V1EnvVar(name="GIT_SSL_NO_VERIFY", value="true"))
 
     volume_mounts = []
     volumes = []

@@ -13,10 +13,12 @@ _LOGGER = logging.getLogger(__name__)
 class Runner:
     def __init__(self, settings: config.RunnerSettings) -> None:
         self._settings = settings
-        self._client = github_client.GitHubClient(settings.repo, settings.git_token)
+        self._client = github_client.GitHubClient(
+            settings.repo, settings.git_token, verify_ssl=settings.verify_ssl
+        )
 
     def run(self) -> None:
-        kubernetes.load_kube_config()
+        kubernetes.load_kube_config(verify_ssl=self._settings.verify_ssl)
         core_api = kubernetes.core_api()
         batch_api = kubernetes.batch_api()
 
@@ -64,7 +66,9 @@ class Runner:
                 if not completed:
                     raise RuntimeError("Kaniko job failed or timed out")
 
-                repo_root, temp_dir = repository.download_and_extract(archive_url)
+                repo_root, temp_dir = repository.download_and_extract(
+                    archive_url, verify_ssl=self._settings.verify_ssl
+                )
                 try:
                     chart_dir = repo_root / Path(self._settings.chart_path)
                     if not chart_dir.exists():

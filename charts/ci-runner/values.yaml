@@ -53,6 +53,7 @@ runner:
   gitTokenSecretName: ""
   registrySecret: ""
   statePath: /data/runner-state.json
+  verifySsl: true
 
 extraEnv: []
 extraEnvFrom: []

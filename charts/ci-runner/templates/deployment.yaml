@@ -70,6 +70,8 @@ spec:
               value: {{ .Values.runner.maxRetries | quote }}
             - name: STATE_PATH
               value: {{ .Values.runner.statePath | quote }}
+            - name: VERIFY_SSL
+              value: {{ .Values.runner.verifySsl | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.logging.level | quote }}
           {{- if .Values.runner.registrySecret }}
