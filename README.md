@@ -118,9 +118,8 @@ Adjust `runner.cicdNamespace` and `runner.deployNamespace` if your build or depl
 chart provisions a `ServiceAccount` and namespace-scoped RBAC roles that grant the runner permission to launch Kaniko Jobs in
 the CI namespace and perform Helm upgrades in the deployment namespace. Configure `runner.gitTokenSecretName` to reference a
 secret containing a `token` key when authenticating to private Git repositories, and enable the optional PersistentVolumeClaim
-if you need the runner state to persist across pod restarts. When clusters use custom certificate authorities, enable
-`certificates.caBundle` to mount a ConfigMap-backed bundle into the runner pod; the chart automatically wires the mounted file to
-the `CA_BUNDLE_PATH` environment variable so both the Kubernetes client and GitHub requests trust the additional certificates.
+if you need the runner state to persist across pod restarts. Set `deploymentLabels` to add custom labels to the Deployment and
+pods—for example, to trigger a mutating admission controller that injects a cluster-wide trust store.
 
 ## Development
 
