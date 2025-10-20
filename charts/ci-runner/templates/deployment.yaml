@@ -9,6 +9,9 @@ metadata:
     app.kubernetes.io/component: runner
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     helm.sh/chart: {{ include "ci-runner.chart" . }}
+  {{- with .Values.deploymentLabels }}
+{{ toYaml . | indent 4 }}
+  {{- end }}
   {{- with .Values.annotations }}
   annotations:
 {{ toYaml . | indent 4 }}
@@ -25,6 +28,9 @@ spec:
         app.kubernetes.io/name: {{ include "ci-runner.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: runner
+      {{- with .Values.deploymentLabels }}
+{{ toYaml . | indent 8 }}
+      {{- end }}
       {{- with .Values.podLabels }}
 {{ toYaml . | indent 8 }}
       {{- end }}
@@ -74,23 +80,6 @@ spec:
               value: {{ .Values.runner.verifySsl | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.logging.level | quote }}
-          {{- if and .Values.certificates .Values.certificates.caBundle.enabled }}
-          {{- $bundle := .Values.certificates.caBundle }}
-          {{- $mountDir := default "/etc/ci-runner/certs" $bundle.mountPath }}
-          {{- $trimmedMountDir := trimSuffix "/" $mountDir }}
-          {{- $fileName := default "ca-bundle.crt" $bundle.fileName }}
-          {{- $fullPath := printf "%s/%s" $trimmedMountDir $fileName }}
-            - name: CA_BUNDLE_PATH
-              value: {{ $fullPath | quote }}
-            - name: REQUESTS_CA_BUNDLE
-              value: {{ $fullPath | quote }}
-            - name: CURL_CA_BUNDLE
-              value: {{ $fullPath | quote }}
-            - name: SSL_CERT_FILE
-              value: {{ $fullPath | quote }}
-            - name: GIT_SSL_CAINFO
-              value: {{ $fullPath | quote }}
-          {{- end }}
           {{- if .Values.runner.registrySecret }}
             - name: REGISTRY_SECRET
               value: {{ .Values.runner.registrySecret | quote }}
@@ -116,17 +105,6 @@ spec:
           volumeMounts:
             - name: runner-data
               mountPath: /data
-          {{- if and .Values.certificates .Values.certificates.caBundle.enabled }}
-          {{- $bundle := .Values.certificates.caBundle }}
-          {{- $mountDir := default "/etc/ci-runner/certs" $bundle.mountPath }}
-          {{- $trimmedMountDir := trimSuffix "/" $mountDir }}
-          {{- $fileName := default "ca-bundle.crt" $bundle.fileName }}
-          {{- $fullPath := printf "%s/%s" $trimmedMountDir $fileName }}
-            - name: ca-bundle
-              mountPath: {{ $fullPath | quote }}
-              subPath: {{ $fileName | quote }}
-              readOnly: true
-          {{- end }}
           {{- with .Values.volumeMounts.extra }}
 {{ toYaml . | indent 12 }}
           {{- end }}
@@ -145,14 +123,6 @@ spec:
           emptyDir: {}
           {{- end }}
           {{- end }}
-      {{- if and .Values.certificates .Values.certificates.caBundle.enabled }}
-        - name: ca-bundle
-          configMap:
-            name: {{ required "certificates.caBundle.configMapName is required when the CA bundle is enabled" .Values.certificates.caBundle.configMapName }}
-            items:
-              - key: {{ required "certificates.caBundle.configMapKey is required when the CA bundle is enabled" .Values.certificates.caBundle.configMapKey }}
-                path: {{ default "ca-bundle.crt" .Values.certificates.caBundle.fileName | quote }}
-      {{- end }}
       {{- with .Values.volumes.extra }}
 {{ toYaml . | indent 8 }}
       {{- end }}
